@@ -39,6 +39,8 @@ def _aging_days(created_at: datetime) -> int:
 
 
 def _current_pending_approver(req: DocumentRequest) -> str | None:
+    if req.status != RequestStatus.pending_approval:
+        return None
     pending = [s for s in req.approval_steps if s.status == StepStatus.pending]
     if not pending:
         return None
@@ -160,7 +162,7 @@ def add_approver(request_id: int, body: ApprovalStepCreate, db: Session = Depend
         approver_email=approver.email,
         role=body.role,
         sequence=body.sequence,
-        status=StepStatus.pending,
+        status=StepStatus.waiting,
     )
     db.add(step)
     db.commit()

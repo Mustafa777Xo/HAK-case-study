@@ -28,6 +28,7 @@ def submit_request(db: Session, request: DocumentRequest) -> DocumentRequest:
     request.status = RequestStatus.pending_approval
     request.submitted_at = datetime.now(timezone.utc)
 
+    # Activate only the first step in sequence; all others stay Waiting
     first_step = min(request.approval_steps, key=lambda s: s.sequence)
     first_step.status = StepStatus.pending
 
@@ -47,7 +48,7 @@ def approve_step(db: Session, step: ApprovalStep, comments: str | None = None) -
     next_step = _get_next_step(request, step.sequence)
 
     if next_step:
-        next_step.status = StepStatus.pending
+        next_step.status = StepStatus.pending  # promote from Waiting → Pending
     else:
         request.status = RequestStatus.approved
 
@@ -66,8 +67,9 @@ def reject_step(db: Session, step: ApprovalStep, comments: str | None = None) ->
     request = step.document_request
     request.status = RequestStatus.rejected
 
+    # Skip all steps that haven't acted yet (Waiting or erroneously Pending)
     for remaining in request.approval_steps:
-        if remaining.id != step.id and remaining.status == StepStatus.pending:
+        if remaining.id != step.id and remaining.status in (StepStatus.waiting, StepStatus.pending):
             remaining.status = StepStatus.skipped
 
     db.commit()
@@ -83,14 +85,8 @@ def _assert_step_is_active(step: ApprovalStep) -> None:
 
 
 def _get_next_step(request: DocumentRequest, current_sequence: int) -> ApprovalStep | None:
-    higher = [
+    waiting = [
         s for s in request.approval_steps
-        if s.sequence > current_sequence and s.status == StepStatus.pending
+        if s.sequence > current_sequence and s.status == StepStatus.waiting
     ]
-    if not higher:
-        remaining = [
-            s for s in request.approval_steps
-            if s.sequence > current_sequence
-        ]
-        return min(remaining, key=lambda s: s.sequence) if remaining else None
-    return min(higher, key=lambda s: s.sequence)
+    return min(waiting, key=lambda s: s.sequence) if waiting else None

@@ -13,10 +13,11 @@ class ApproverRole(str, enum.Enum):
 
 
 class StepStatus(str, enum.Enum):
-    pending = "Pending"
+    waiting = "Waiting"   # added to chain, not yet the active step
+    pending = "Pending"   # currently active — this approver must act
     approved = "Approved"
     rejected = "Rejected"
-    skipped = "Skipped"
+    skipped = "Skipped"   # bypassed due to an earlier rejection
 
 
 class ApprovalStep(Base):

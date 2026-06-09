@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.approval_step import ApprovalStep, StepStatus
+from app.models.document_request import DocumentRequest, RequestStatus
 from app.schemas.approval_step import ApprovalStepOut, ApprovalAction
 from app.services.workflow import approve_step, reject_step, WorkflowError
 
@@ -28,7 +29,12 @@ def get_pending_steps(
 ):
     steps = (
         db.query(ApprovalStep)
-        .filter(ApprovalStep.approver_id == approver_id, ApprovalStep.status == StepStatus.pending)
+        .join(DocumentRequest)
+        .filter(
+            ApprovalStep.approver_id == approver_id,
+            ApprovalStep.status == StepStatus.pending,
+            DocumentRequest.status == RequestStatus.pending_approval,
+        )
         .all()
     )
     return steps

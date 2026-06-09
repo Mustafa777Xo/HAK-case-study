@@ -2,6 +2,7 @@ from datetime import datetime, date
 from pydantic import BaseModel, field_validator
 from app.models.document_request import RequestType, Priority, RequestStatus
 from app.schemas.approval_step import ApprovalStepOut
+import datetime as dt
 
 
 class DocumentRequestCreate(BaseModel):
@@ -25,6 +26,13 @@ class DocumentRequestCreate(BaseModel):
             raise ValueError("Title cannot be empty")
         if len(v) > 200:
             raise ValueError("Title cannot exceed 200 characters")
+        return v
+
+    @field_validator("due_date")
+    @classmethod
+    def due_date_must_be_future(cls, v: date | None) -> date | None:
+        if v is not None and v <= dt.date.today():
+            raise ValueError("Due date must be a future date")
         return v
 
 

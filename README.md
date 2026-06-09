@@ -181,7 +181,6 @@ All `/api/*` requests are automatically proxied to the FastAPI server.
 
 ## Development Phases
 
-See [`DEVPLAN.md`](../DEVPLAN.md) for the full phased plan with phase codes (P1–P10).
 
 | Phase | Description | Status |
 |---|---|---|
