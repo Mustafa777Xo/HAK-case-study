@@ -1,6 +1,7 @@
-from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from datetime import datetime, date
+from pydantic import BaseModel
 from app.models.approval_step import ApproverRole, StepStatus
+from app.models.document_request import RequestStatus, Priority
 
 
 class ApprovalStepCreate(BaseModel):
@@ -26,3 +27,20 @@ class ApprovalStepOut(BaseModel):
 
 class ApprovalAction(BaseModel):
     comments: str | None = None
+
+
+class RequestSummary(BaseModel):
+    id: int
+    title: str
+    requested_by: str
+    department: str
+    priority: Priority
+    status: RequestStatus
+    due_date: date | None
+
+    model_config = {"from_attributes": True}
+
+
+class PendingApprovalItem(ApprovalStepOut):
+    """ApprovalStep with its parent request embedded — avoids N+1 on the frontend."""
+    request: RequestSummary

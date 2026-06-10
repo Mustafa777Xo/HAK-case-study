@@ -1,9 +1,9 @@
 import client from "./client";
-import type { ApprovalStep, ApprovalActionPayload, DashboardSummary } from "@/types";
+import type { ApprovalStep, ApprovalActionPayload, DashboardSummary, PendingApprovalItem } from "@/types";
 
 export const getPendingSteps = (approverId: number) =>
   client
-    .get<ApprovalStep[]>("/approvals/pending", { params: { approver_id: approverId } })
+    .get<PendingApprovalItem[]>("/approvals/pending", { params: { approver_id: approverId } })
     .then((r) => r.data);
 
 export const approveStep = (stepId: number, payload: ApprovalActionPayload) =>

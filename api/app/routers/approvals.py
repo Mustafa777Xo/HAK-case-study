@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.approval_step import ApprovalStep, StepStatus
 from app.models.document_request import DocumentRequest, RequestStatus
-from app.schemas.approval_step import ApprovalStepOut, ApprovalAction
+from app.schemas.approval_step import ApprovalStepOut, ApprovalAction, PendingApprovalItem
 from app.services.workflow import approve_step, reject_step, WorkflowError
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
@@ -39,7 +39,7 @@ def _assert_caller_is_approver(step: ApprovalStep, caller_id: int | None) -> Non
         )
 
 
-@router.get("/pending", response_model=list[ApprovalStepOut])
+@router.get("/pending", response_model=list[PendingApprovalItem])
 def get_pending_steps(
     approver_id: int = Query(..., description="Filter pending steps by approver user ID"),
     db: Session = Depends(get_db),
@@ -47,6 +47,7 @@ def get_pending_steps(
     steps = (
         db.query(ApprovalStep)
         .join(DocumentRequest)
+        .options(joinedload(ApprovalStep.document_request))
         .filter(
             ApprovalStep.approver_id == approver_id,
             ApprovalStep.status == StepStatus.pending,
@@ -54,7 +55,13 @@ def get_pending_steps(
         )
         .all()
     )
-    return steps
+    return [
+        PendingApprovalItem(
+            **{c.key: getattr(step, c.key) for c in step.__table__.columns},
+            request=step.document_request,
+        )
+        for step in steps
+    ]
 
 
 @router.post("/{step_id}/approve", response_model=ApprovalStepOut)

@@ -11,6 +11,8 @@ export const listRequests = (params?: {
   status?: string;
   department?: string;
   priority?: string;
+  date_from?: string;
+  date_to?: string;
 }) => client.get<DocumentRequestListItem[]>("/requests/", { params }).then((r) => r.data);
 
 export const getRequest = (id: number) =>

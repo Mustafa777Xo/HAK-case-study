@@ -80,6 +80,20 @@ export interface DashboardSummary {
   rejected: number;
 }
 
+export interface RequestSummary {
+  id: number;
+  title: string;
+  requested_by: string;
+  department: string;
+  priority: Priority;
+  status: RequestStatus;
+  due_date: string | null;
+}
+
+export interface PendingApprovalItem extends ApprovalStep {
+  request: RequestSummary;
+}
+
 // ─── API Payloads ─────────────────────────────────────────────────────────────
 
 export interface CreateRequestPayload {
