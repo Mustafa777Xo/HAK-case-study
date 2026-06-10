@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.database import get_db
 from app.models.approval_step import ApprovalStep, StepStatus
@@ -15,7 +15,7 @@ def _get_step_or_404(db: Session, step_id: int) -> ApprovalStep:
         db.query(ApprovalStep)
         .options(
             joinedload(ApprovalStep.document_request)
-            .joinedload(DocumentRequest.approval_steps)
+            .selectinload(DocumentRequest.approval_steps)
         )
         .filter(ApprovalStep.id == step_id)
         .first()
