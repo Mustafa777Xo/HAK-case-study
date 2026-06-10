@@ -36,6 +36,24 @@ uvicorn app.main:app --reload
 
 ---
 
+## Running Tests
+
+From the repository root:
+
+```bash
+./scripts/test-api.sh
+```
+
+The script uses `api/.venv/bin/python` when it exists, installs `api/requirements-dev.txt` if `pytest` is missing, and runs the isolated FastAPI test suite.
+
+To pass pytest flags:
+
+```bash
+./scripts/test-api.sh -q
+```
+
+---
+
 ## Environment Variables
 
 | Variable | Default | Description |
