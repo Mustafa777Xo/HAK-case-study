@@ -7,8 +7,12 @@ const navLinks = [
   { to: "/approvals", label: "My Approvals" },
 ];
 
-export default function Layout() {
-  const { currentUser, clearUser } = useUserStore();
+interface Props {
+  onSwitchUser: () => void;
+}
+
+export default function Layout({ onSwitchUser }: Props) {
+  const { currentUser } = useUserStore();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -22,7 +26,7 @@ export default function Layout() {
                 {currentUser.name} · {currentUser.department}
               </span>
               <button
-                onClick={clearUser}
+                onClick={onSwitchUser}
                 className="rounded bg-brand-700 px-3 py-1 text-xs hover:bg-brand-600 transition-colors"
               >
                 Switch user
