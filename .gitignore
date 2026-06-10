@@ -11,20 +11,21 @@ desktop.ini
 *.orig
 
 # ══════════════════════════════════════════════════════════════════════════════
-# API — Python / FastAPI
+# Python (bare patterns — match at any depth in the repo)
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Virtual environments
-api/.venv/
-api/venv/
-api/env/
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.mypy_cache/
+.ruff_cache/
 
-# Python cache
-api/**/__pycache__/
-api/**/*.py[cod]
-api/**/*.pyo
-api/.mypy_cache/
-api/.ruff_cache/
+# ══════════════════════════════════════════════════════════════════════════════
+# API — FastAPI specific
+# ══════════════════════════════════════════════════════════════════════════════
 
 # SQLite database files
 api/*.db

@@ -1,4 +1,4 @@
-# HAK Engineering — Document Approval System ( pre design system )
+# HAK Engineering — Document Approval System
 
 A full-stack prototype for an internal document request and sequential approval workflow system, built as part of the HAK Engineering case study.
 
@@ -11,16 +11,16 @@ Employees can create a document request, attach a PDF, assign one or more approv
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                      Browser (React)                    │
-│  Vite · Headless UI · Tailwind CSS · Zustand · Axios    │
+│  Vite · Headless UI v2 · Tailwind CSS · Zustand · Axios │
 └────────────────────┬────────────────────────────────────┘
-                     │ HTTP (proxied via Vite dev server)
+                     │ HTTP  /api/* proxied by Vite dev server
 ┌────────────────────▼────────────────────────────────────┐
-│                   FastAPI (Python)                      │
-│  SQLAlchemy · SQLite · Pydantic v2 · Uvicorn            │
+│                   FastAPI (Python 3.11)                 │
+│  SQLAlchemy 2 · SQLite · Pydantic v2 · Uvicorn          │
 └────────────────────┬────────────────────────────────────┘
                      │
               ┌──────▼──────┐
-              │  SQLite DB  │   uploads/ (PDF files)
+              │  SQLite DB  │   api/uploads/ (PDF files)
               └─────────────┘
 ```
 
@@ -30,35 +30,67 @@ Employees can create a document request, attach a PDF, assign one or more approv
 
 ```
 HAK-case-study/
-├── api/                  # FastAPI backend
+├── api/                        # FastAPI backend
 │   ├── app/
-│   │   ├── main.py       # App entry point, CORS, router registration
-│   │   ├── config.py     # Settings (env vars)
-│   │   ├── database.py   # SQLAlchemy engine + session
-│   │   ├── seed.py       # Populates 5 mock users
-│   │   ├── models/       # ORM models: User, DocumentRequest, ApprovalStep
-│   │   ├── schemas/      # Pydantic request/response shapes
-│   │   ├── routers/      # Route handlers: users, requests, approvals, dashboard
-│   │   └── services/     # Workflow engine, file storage
-│   ├── uploads/          # Uploaded PDFs (gitignored)
+│   │   ├── main.py             # App entry, CORS, router registration, static mount
+│   │   ├── config.py           # Pydantic Settings (reads .env)
+│   │   ├── database.py         # SQLAlchemy engine + session factory
+│   │   ├── seed.py             # Populates 5 mock users
+│   │   ├── models/
+│   │   │   ├── user.py
+│   │   │   ├── document_request.py
+│   │   │   └── approval_step.py
+│   │   ├── schemas/
+│   │   │   ├── user.py
+│   │   │   ├── document_request.py
+│   │   │   └── approval_step.py   # includes PendingApprovalItem
+│   │   ├── routers/
+│   │   │   ├── users.py
+│   │   │   ├── requests.py        # CRUD, PDF upload, approver management, submit
+│   │   │   ├── approvals.py       # approve, reject, pending list
+│   │   │   └── dashboard.py       # summary counts
+│   │   └── services/
+│   │       ├── workflow.py        # sequential approval state machine
+│   │       └── file_storage.py    # PDF validation + save
+│   ├── uploads/                # Uploaded PDFs — gitignored, kept via .gitkeep
 │   ├── requirements.txt
-│   └── .env.example
+│   ├── .env.example
+│   └── README.md
 │
-├── view/                 # React frontend (Vite)
+├── view/                       # React frontend (Vite)
 │   ├── src/
-│   │   ├── api/          # Axios client + typed endpoint wrappers
-│   │   ├── components/   # Shared components (Layout, UserSelectModal, StatusBadge)
-│   │   ├── pages/        # Route-level pages (Dashboard, Requests, Approvals…)
-│   │   ├── store/        # Zustand: currentUser state
-│   │   └── types/        # TypeScript interfaces mirroring API shapes
+│   │   ├── api/
+│   │   │   ├── client.ts       # Axios instance, X-User-Id header, error interceptor
+│   │   │   ├── users.ts
+│   │   │   ├── requests.ts
+│   │   │   └── approvals.ts
+│   │   ├── components/
+│   │   │   ├── Layout.tsx          # Top nav + React Router Outlet
+│   │   │   ├── UserSelectModal.tsx # Headless UI Dialog — mock auth picker
+│   │   │   ├── StatusBadge.tsx     # Color-coded request status pill
+│   │   │   ├── Spinner.tsx         # Animated loading spinner
+│   │   │   ├── PageHeader.tsx      # Title + back-link + action slot
+│   │   │   ├── FieldListbox.tsx    # Typed Headless UI Listbox wrapper
+│   │   │   └── ApproveRejectDialog.tsx  # Headless UI Dialog for approval actions
+│   │   ├── pages/
+│   │   │   ├── DashboardPage.tsx       # 4 stat cards + quick actions
+│   │   │   ├── RequestListPage.tsx     # Filterable table (7 case-study columns)
+│   │   │   ├── CreateRequestPage.tsx   # 2-phase form (details+PDF → approvers+submit)
+│   │   │   ├── RequestDetailPage.tsx   # Full detail + approval timeline + action buttons
+│   │   │   └── ApprovalsPage.tsx       # Requests awaiting current user's action
+│   │   ├── store/
+│   │   │   └── useUserStore.ts     # Zustand — persisted current user
+│   │   └── types/
+│   │       └── index.ts            # TypeScript interfaces mirroring API shapes
 │   ├── index.html
-│   ├── vite.config.ts    # Dev server proxies /api → localhost:8000
+│   ├── vite.config.ts          # Proxies /api and /uploads → localhost:8000
 │   ├── tailwind.config.ts
-│   └── package.json
+│   ├── package.json
+│   └── README.md
 │
 └── docs/
     ├── part1-requirements-thinking.md   # Clarification questions + assumptions
-    └── part3-erp-frappe-thinking.md     # ERP/Frappe mapping (added in P9)
+    └── part3-erp-frappe-thinking.md     # ERP/Frappe mapping (DocTypes, workflows, permissions…)
 ```
 
 ---
@@ -89,47 +121,26 @@ HAK-case-study/
 
 ## Setup Instructions
 
-### Prerequisites
+See [`api/README.md`](api/README.md) and [`view/README.md`](view/README.md) for detailed setup guides.
 
-- Python 3.11+
-- Node.js 18+
-
-### 1 — Backend (API)
+### Quick Start
 
 ```bash
+# Terminal 1 — API
 cd api
-
-# Create and activate a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-
-# Install dependencies
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# Copy env config (defaults work out of the box)
 cp .env.example .env
-
-# Seed mock users into the database
 python -m app.seed
-
-# Start the development server
 uvicorn app.main:app --reload
-```
+# → http://localhost:8000   (Swagger docs at /docs)
 
-API runs at **http://localhost:8000**
-Interactive docs at **http://localhost:8000/docs**
-
-### 2 — Frontend (View)
-
-```bash
+# Terminal 2 — View
 cd view
-
 npm install
 npm run dev
+# → http://localhost:3000
 ```
-
-App runs at **http://localhost:3000**
-All `/api/*` requests are automatically proxied to the FastAPI server.
 
 ---
 
@@ -141,17 +152,35 @@ All `/api/*` requests are automatically proxied to the FastAPI server.
                                     ┌───────────▼────────────┐
                                     │    Pending Approval     │
                                     │  (Approver 1 active)   │
-                                    └───────────┬────────────┘
-                              approve           │        reject
-                    ┌──────────────────┐        │   ┌──────────────────┐
-                    │ Approver 2 active│        │   │    Rejected      │
-                    │      ...        │        │   └──────────────────┘
-                    └────────┬─────────┘        │
-                         (last approver)        │
-                    ┌────────▼─────────┐
-                    │    Approved      │
-                    └──────────────────┘
+                                    └─────┬───────────┬───────┘
+                                    approve             reject
+                              ┌─────▼──────┐     ┌─────▼──────┐
+                              │ Next step  │     │  Rejected  │
+                              │  active…   │     │ (all skip) │
+                              └─────┬──────┘     └────────────┘
+                              (last approver)
+                              ┌─────▼──────┐
+                              │  Approved  │
+                              └────────────┘
 ```
+
+---
+
+## Case Study Requirements Checklist
+
+| # | Requirement | Where implemented |
+|---|---|---|
+| 1 | Create a document request | `POST /requests/` · `CreateRequestPage` |
+| 2 | Attach / upload a PDF | `POST /requests/{id}/upload-pdf` · PDF picker in `CreateRequestPage` |
+| 3 | Add one or more approvers | `POST /requests/{id}/approvers` · Approver panel in `CreateRequestPage` |
+| 4 | Submit the request for approval | `POST /requests/{id}/submit` · Submit button in `CreateRequestPage` |
+| 5a | Validate: PDF attached before submit | `services/workflow.py` · `file_storage.py` (type + size) |
+| 5b | Validate: ≥1 approver before submit | `services/workflow.py` |
+| 6 | Sequential approval routing | `services/workflow.py` — only seq-1 step is `Pending` after submit |
+| 7 | Only the current pending approver can act | `routers/approvals.py` — `X-User-Id` guard → 403 if wrong user |
+| 8 | One rejection → whole request Rejected | `workflow.reject_step()` — remaining steps set to `Skipped` |
+| 9 | All approvals → request Approved | `workflow.approve_step()` — last step triggers `Approved` |
+| 10 | Report list with 7 columns | `GET /requests/` returns all 7 fields · `RequestListPage` table |
 
 ---
 
@@ -159,13 +188,15 @@ All `/api/*` requests are automatically proxied to the FastAPI server.
 
 | Decision | Rationale |
 |---|---|
-| FastAPI + SQLAlchemy 2 | Async-ready, excellent Pydantic integration, auto-generated OpenAPI docs |
+| FastAPI + SQLAlchemy 2 | Async-ready, excellent Pydantic v2 integration, auto-generated OpenAPI docs at `/docs` |
 | SQLite for prototype | Zero-config, file-based — easy to share and reset; swap for PostgreSQL in production |
-| React + Vite | Fastest dev iteration; Vite proxy removes CORS concerns during development |
-| Headless UI v2 | Fully accessible, unstyled components — full visual control via Tailwind without fighting overrides |
-| Zustand | Minimal boilerplate for the single piece of global state (current user) |
-| Mock auth | Keeps the prototype focused on the workflow logic; a real auth layer would be the first production addition |
-| Sequential approval enforced server-side | Workflow rules live in `services/workflow.py` — the frontend cannot bypass them |
+| React + Vite | Fastest dev iteration; Vite proxy eliminates CORS concerns in development |
+| Headless UI v2 | Fully accessible, unstyled components — complete visual control via Tailwind without fighting overrides |
+| Zustand | Minimal boilerplate for the single piece of global state (current user); persisted via `localStorage` |
+| Mock auth via `X-User-Id` header | Keeps the prototype focused on workflow logic; a real auth layer would be the first production addition |
+| Sequential approval enforced server-side | All workflow rules live in `services/workflow.py` — the frontend cannot bypass them |
+| `Waiting` step status | Steps are created as `Waiting` (not `Pending`) so only the active step appears in the approvals queue |
+| Vite `/uploads` proxy | PDFs are served by FastAPI's static mount; the Vite proxy forwards `/uploads/*` so no CORS or port-switching needed |
 
 ---
 
@@ -175,22 +206,22 @@ All `/api/*` requests are automatically proxied to the FastAPI server.
 - **SQLite** is single-writer; switch to PostgreSQL for any concurrent load.
 - **Local file storage** — PDFs are stored on disk; not suitable for multi-instance deployments.
 - **No email/WhatsApp notifications** — approvers must check the dashboard manually.
-- **No pagination on large lists** — report endpoint returns all records; add cursor/offset pagination for production.
+- **No pagination** — the report endpoint returns all records; add cursor/offset pagination for production.
+- **No request resubmission** — a rejected request is terminal in this prototype; a real system would allow amendment + resubmit.
 
 ---
 
 ## Development Phases
 
-
 | Phase | Description | Status |
 |---|---|---|
 | P1-FOUNDATION | Bootstrap, DB models, React scaffold | ✅ Done |
-| P2-BACKEND-CRUD | Request CRUD + PDF upload | ⏳ Next |
-| P3-APPROVAL-ENGINE | Sequential workflow logic | — |
-| P4-API-REPORTS | Dashboard + report endpoints | — |
-| P5-VIEW-LAYOUT | App shell + navigation | — |
-| P6-VIEW-FORMS | Create request form + approver UI | — |
-| P7-VIEW-APPROVAL | Approve/reject UI | — |
-| P8-VIEW-REPORTS | Dashboard cards + list report | — |
-| P9-PART3-ANSWERS | ERP/Frappe doc | — |
-| P10-FINALIZE | README polish + setup validation | — |
+| P2-BACKEND-CRUD | Request CRUD + PDF upload | ✅ Done |
+| P3-APPROVAL-ENGINE | Sequential workflow logic | ✅ Done |
+| P4-API-REPORTS | Dashboard + report endpoints | ✅ Done |
+| P5-VIEW-LAYOUT | App shell + navigation | ✅ Done |
+| P6-VIEW-FORMS | Create request form + approver UI | ✅ Done |
+| P7-VIEW-APPROVAL | Approve/reject UI + detail view | ✅ Done |
+| P8-VIEW-REPORTS | Dashboard cards + list report | ✅ Done |
+| P9-PART3-ANSWERS | ERP/Frappe thinking doc | ✅ Done |
+| P10-FINALIZE | README polish + final validation + commit | ✅ Done |
