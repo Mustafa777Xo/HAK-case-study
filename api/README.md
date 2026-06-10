@@ -10,7 +10,51 @@ FastAPI backend for the HAK Engineering document approval prototype.
 
 ---
 
-## Setup
+## One-Command Run
+
+From the repository root:
+
+```bash
+# macOS / Linux
+./scripts/run-api.sh
+```
+
+```powershell
+# Windows PowerShell
+.\scripts\run-api.ps1
+```
+
+```bat
+:: Windows Command Prompt
+scripts\run-api.bat
+```
+
+The runner creates `api/.venv` if needed, installs dependencies, creates `api/.env` from `.env.example` when missing, seeds mock users, and starts Uvicorn.
+
+- API base URL: **http://localhost:8000**
+- Interactive Swagger docs: **http://localhost:8000/docs**
+- ReDoc: **http://localhost:8000/redoc**
+
+Useful options:
+
+```bash
+./scripts/run-api.sh --setup-only             # install deps, create .env, seed, then exit
+./scripts/run-api.sh --reset-db               # delete SQLite DB before seeding
+./scripts/run-api.sh --reset-db --clear-uploads
+./scripts/run-api.sh --host 0.0.0.0 --port 8080
+./scripts/run-api.sh --skip-install           # useful after deps are already installed
+./scripts/run-api.sh --no-reload              # run Uvicorn without reload
+```
+
+The same flags work with `run-api.ps1`, `run-api.bat`, or directly with:
+
+```bash
+python scripts/run-api.py --help
+```
+
+---
+
+## Manual Setup
 
 ```bash
 # 1. Create and activate a virtual environment
@@ -29,10 +73,6 @@ python -m app.seed
 # 5. Start the dev server
 uvicorn app.main:app --reload
 ```
-
-- API base URL: **http://localhost:8000**
-- Interactive Swagger docs: **http://localhost:8000/docs**
-- ReDoc: **http://localhost:8000/redoc**
 
 ---
 
