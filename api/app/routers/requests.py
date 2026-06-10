@@ -67,6 +67,8 @@ def list_requests(
     status: RequestStatus | None = Query(None),
     department: str | None = Query(None),
     priority: str | None = Query(None),
+    date_from: date | None = Query(None, description="Filter requests created on or after this date (YYYY-MM-DD)"),
+    date_to: date | None = Query(None, description="Filter requests created on or before this date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
 ):
     query = db.query(DocumentRequest).options(joinedload(DocumentRequest.approval_steps))
@@ -76,6 +78,10 @@ def list_requests(
         query = query.filter(DocumentRequest.department == department)
     if priority:
         query = query.filter(DocumentRequest.priority == priority)
+    if date_from:
+        query = query.filter(DocumentRequest.created_at >= datetime(date_from.year, date_from.month, date_from.day, tzinfo=timezone.utc))
+    if date_to:
+        query = query.filter(DocumentRequest.created_at <= datetime(date_to.year, date_to.month, date_to.day, 23, 59, 59, tzinfo=timezone.utc))
 
     requests = query.order_by(DocumentRequest.created_at.desc()).all()
 
