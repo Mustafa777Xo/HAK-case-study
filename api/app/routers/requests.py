@@ -48,6 +48,11 @@ def _current_pending_approver(req: DocumentRequest) -> str | None:
     return step.approver_name
 
 
+def _next_approver_sequence(req: DocumentRequest) -> int:
+    existing_sequences = [step.sequence for step in req.approval_steps]
+    return (max(existing_sequences) if existing_sequences else 0) + 1
+
+
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
 @router.post("/", response_model=DocumentRequestOut, status_code=201)
@@ -161,13 +166,16 @@ def add_approver(request_id: int, body: ApprovalStepCreate, db: Session = Depend
     approver = db.query(User).filter(User.id == body.approver_id).first()
     if not approver:
         raise HTTPException(status_code=404, detail="Approver user not found")
+    if any(step.approver_id == approver.id for step in req.approval_steps):
+        raise HTTPException(status_code=400, detail="This user is already an approver on the request.")
+
     step = ApprovalStep(
         document_request_id=request_id,
         approver_id=approver.id,
         approver_name=approver.name,
         approver_email=approver.email,
         role=body.role,
-        sequence=body.sequence,
+        sequence=_next_approver_sequence(req),
         status=StepStatus.waiting,
     )
     db.add(step)

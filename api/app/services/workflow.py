@@ -25,11 +25,16 @@ def submit_request(db: Session, request: DocumentRequest) -> DocumentRequest:
     if not request.approval_steps:
         raise WorkflowError("At least one approver must be added before submitting.")
 
+    ordered_steps = sorted(request.approval_steps, key=lambda s: (s.sequence, s.id))
+    for sequence, step in enumerate(ordered_steps, start=1):
+        step.sequence = sequence
+        step.status = StepStatus.waiting
+
     request.status = RequestStatus.pending_approval
     request.submitted_at = datetime.now(timezone.utc)
 
     # Activate only the first step in sequence; all others stay Waiting
-    first_step = min(request.approval_steps, key=lambda s: s.sequence)
+    first_step = ordered_steps[0]
     first_step.status = StepStatus.pending
 
     db.commit()

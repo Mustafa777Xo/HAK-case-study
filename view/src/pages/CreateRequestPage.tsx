@@ -19,6 +19,7 @@ import {
   createRequest,
   uploadPdf,
   addApprover as apiAddApprover,
+  listApprovers,
   removeApprover as apiRemoveApprover,
   submitRequest,
 } from "@/api/requests";
@@ -41,10 +42,8 @@ const ROLES: ApproverRole[] = ["Reviewer", "Approver", "Signatory"];
 type Phase = "form" | "approvers";
 
 interface ApproverEntry {
-  stepId: number;
   user: User;
   role: ApproverRole;
-  sequence: number;
 }
 
 // ── Input helper ──────────────────────────────────────────────────────────────
@@ -89,7 +88,6 @@ export default function CreateRequestPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [role, setRole] = useState<ApproverRole>("Approver");
   const [approvers, setApprovers] = useState<ApproverEntry[]>([]);
-  const [addingApprover, setAddingApprover] = useState(false);
   const [approverError, setApproverError] = useState<string | null>(null);
 
   // ── Submit state ───────────────────────────────────────────────────────────
@@ -165,46 +163,53 @@ export default function CreateRequestPage() {
 
   async function handleAddApprover() {
     if (!selectedUser || !requestId) return;
+    const userToAdd = selectedUser;
     setApproverError(null);
-    setAddingApprover(true);
-    try {
-      const step = await apiAddApprover(requestId, {
-        approver_id: selectedUser.id,
-        role,
-        sequence: approvers.length + 1,
-      });
-      setApprovers((prev) => [
-        ...prev,
-        { stepId: step.id, user: selectedUser, role, sequence: step.sequence },
-      ]);
-      setSelectedUser(null);
-      setQuery("");
-    } catch (err) {
-      setApproverError((err as Error).message);
-    } finally {
-      setAddingApprover(false);
+    if (approvers.some((entry) => entry.user.id === userToAdd.id)) {
+      setApproverError("This user is already in the approval chain.");
+      return;
     }
+    setApprovers((prev) => [...prev, { user: userToAdd, role }]);
+    setSelectedUser(null);
+    setQuery("");
   }
 
-  async function handleRemoveApprover(entry: ApproverEntry) {
-    if (!requestId) return;
-    try {
-      await apiRemoveApprover(requestId, entry.stepId);
-      setApprovers((prev) => prev.filter((a) => a.stepId !== entry.stepId));
-    } catch (err) {
-      setApproverError((err as Error).message);
-    }
+  function handleRemoveApprover(entry: ApproverEntry) {
+    setApprovers((prev) => prev.filter((a) => a.user.id !== entry.user.id));
   }
 
   async function handleSubmit() {
     if (!requestId) return;
     setSubmitError(null);
-    if (approvers.length === 0) {
-      setSubmitError("Add at least one approver before submitting.");
-      return;
-    }
+
     setSubmitting(true);
     try {
+      if (approvers.length === 0) {
+        setSubmitError("Add at least one approver before submitting.");
+        return;
+      }
+
+      const existingApprovers = await listApprovers(requestId);
+      for (const step of existingApprovers) {
+        await apiRemoveApprover(requestId, step.id);
+      }
+
+      for (const [index, entry] of approvers.entries()) {
+        await apiAddApprover(requestId, {
+          approver_id: entry.user.id,
+          role: entry.role,
+          sequence: index + 1,
+        });
+      }
+
+      const savedApprovers = await listApprovers(requestId);
+      if (savedApprovers.length !== approvers.length) {
+        setSubmitError(
+          `Expected ${approvers.length} approver${approvers.length === 1 ? "" : "s"} but saved ${savedApprovers.length}. Please try again.`
+        );
+        return;
+      }
+
       await submitRequest(requestId);
       navigate(`/requests/${requestId}`);
     } catch (err) {
@@ -492,10 +497,10 @@ export default function CreateRequestPage() {
               {/* Add button */}
               <button
                 onClick={handleAddApprover}
-                disabled={!selectedUser || addingApprover}
+                disabled={!selectedUser}
                 className="flex shrink-0 items-center gap-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-40"
               >
-                {addingApprover ? <Spinner size="sm" /> : "+ Add"}
+                + Add
               </button>
             </div>
 
@@ -505,7 +510,7 @@ export default function CreateRequestPage() {
             {approvers.length > 0 ? (
               <ul className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200">
                 {approvers.map((entry, idx) => (
-                  <li key={entry.stepId} className="flex items-center gap-3 px-4 py-3">
+                  <li key={entry.user.id} className="flex items-center gap-3 px-4 py-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
                       {idx + 1}
                     </span>

@@ -12,7 +12,7 @@ export type RequestStatus = "Draft" | "Pending Approval" | "Approved" | "Rejecte
 
 export type ApproverRole = "Reviewer" | "Approver" | "Signatory";
 
-export type StepStatus = "Pending" | "Approved" | "Rejected" | "Skipped";
+export type StepStatus = "Waiting" | "Pending" | "Approved" | "Rejected" | "Skipped";
 
 // ─── Entities ─────────────────────────────────────────────────────────────────
 
